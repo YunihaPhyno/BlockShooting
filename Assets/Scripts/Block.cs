@@ -11,17 +11,5 @@ namespace Ingame
 		{
 			gameObject.GetComponent<Renderer>().material.color = Color.green;
 		}
-
-		// Update is called once per frame
-		void Update()
-		{
-
-		}
-
-		void FixedUpdate()
-		{
-
-		}
-
 	}
 }

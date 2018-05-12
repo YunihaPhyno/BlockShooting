@@ -42,6 +42,7 @@ namespace Ingame
 			{
 				case "Block":
 					Destroy(gameObject);
+					Destroy(other.gameObject);
 					break;
 			}
 

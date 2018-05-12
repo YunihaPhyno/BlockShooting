@@ -7,30 +7,116 @@ namespace Ingame
 	public class BlockManager : MonoBehaviour
 	{
 		private static GameObject blockPrefab;
+		private static GameObject floorPrefab;
+		private static GameObject blockGroupPrefab;
 
 		private Transform m_blockParent;
 		private Transform BlockParent { get { return m_blockParent; } }
 
-		void Awake()
+		#region Awake
+		private void Awake()
 		{
 			LoadPrefab();
 
-			m_blockParent = new GameObject("Blocks").transform;
+			CreateBlockParent();
+		}
+
+		private void CreateBlockParent()
+		{
+			GameObject obj = new GameObject("Blocks");
+			obj.transform.parent = transform;
+			m_blockParent = obj.transform;
 		}
 
 		private static void LoadPrefab()
 		{
-			blockPrefab = Resources.Load<GameObject>("Block");
-			if(blockPrefab == null)
-			{
-				blockPrefab.ToString(); // とりあえず無かったらexeption吐かせる(乱暴)
-			}
+			blockPrefab = CheckLoad<GameObject>("Block");
+			floorPrefab = CheckLoad<GameObject>("Floor");
+			blockGroupPrefab = CheckLoad<GameObject>("BlockGroup");
 		}
 
-		#region BlockList
+		private static T CheckLoad<T>(string path) where T : Object
+		{
+			T obj = Resources.Load<T>(path);
+			if(obj == null)
+			{
+				obj.ToString(); // とりあえず無かったらexeption吐かせる(乱暴)
+			}
+			return obj;
+		}
+		#endregion //Awake
+
+		#region Start
+		private void Start()
+		{
+			CreateFloor();
+			SetState(State.SPAWN);
+		}
+
+		private void CreateFloor()
+		{
+			GameObject floor = GameObject.Instantiate<GameObject>(floorPrefab);
+			for(int c = 0; c < GameManager.MAX_COLUMNS; c++)
+			{
+				GameObject block = GameObject.Instantiate<GameObject>(blockPrefab);
+				block.transform.parent = floor.transform;
+				block.transform.localPosition = new Vector3(c, -1, 0);
+			}
+			floor.transform.localPosition = Vector3.zero;
+		}
+		#endregion //Start
+
+		#region Update
+
+		#region BlockGroupList
 		private List<BlockGroup> m_blockGroupList = new List<BlockGroup>();
 		public List<BlockGroup> BlockGroupList { get { return m_blockGroupList; } }
 		#endregion // BlockList
+
+		// Update is called once per frame
+		private void Update()
+		{
+			UpdateState();
+		}
+
+		#region State
+		public enum State
+		{
+			SUSPEND,
+			SPAWN,
+			FALL_DOWN,
+		}
+		private State m_state;
+		private void SetState(State state) { m_state = state; }
+		public State state { get { return m_state; } }
+		#endregion // State
+
+		private void UpdateState()
+		{
+			switch(state)
+			{
+				case State.SUSPEND:
+					// nothing to do
+					break;
+
+				case State.SPAWN:
+					StateSpawn();
+					break;
+
+				case State.FALL_DOWN:
+					StateFallDown();
+					break;
+			}
+		}
+
+		#region StateSpawn
+		private void StateSpawn()
+		{
+			SpawnRandomBlocks();
+			SetState(State.FALL_DOWN);
+		}
+
+		#region SpawnRandomBlocks
 
 		#region SpawnRows
 		private int m_spawnRows = 3;
@@ -44,11 +130,11 @@ namespace Ingame
 		public void SetThreshold(float value) { m_threshold = value; }
 		public float Threshold { get { return m_threshold; } }
 		#endregion // Threshold
-		
+
 		public void SpawnRandomBlocks()
 		{
 			Block[][] blocks = MakeRandomBlocks(SpawnRows, Threshold, BlockParent);
-			MakeBlockGroups(blocks, BlockParent);
+			m_blockGroupList.AddRange(MakeBlockGroups(blocks, BlockParent));
 		}
 
 		private static List<BlockGroup> MakeBlockGroups(Block[][] blocks, Transform parent)
@@ -71,7 +157,7 @@ namespace Ingame
 					{
 						continue;
 					}
-					
+
 					// 所属が見つからなければ新たに作る
 					BlockGroup newGroup = CreateBlockGroup(parent);
 					groupList.Add(newGroup);
@@ -112,7 +198,7 @@ namespace Ingame
 
 		private static BlockGroup CreateBlockGroup(Transform parent)
 		{
-			GameObject obj = new GameObject("BlockGroup");
+			GameObject obj = Instantiate<GameObject>(blockGroupPrefab);
 			obj.transform.parent = parent;
 			obj.transform.localPosition = Vector3.zero;
 
@@ -151,7 +237,7 @@ namespace Ingame
 			}
 			return blocks;
 		}
-			
+
 		private static Block SpawnBlock(Vector3 spawnPos, Transform parent = null)
 		{
 			GameObject gobj = GameObject.Instantiate<GameObject>(blockPrefab);
@@ -161,5 +247,92 @@ namespace Ingame
 			Block block = gobj.AddComponent<Block>();
 			return block;
 		}
+		#endregion // SpawnRandomBlocks
+
+		#endregion // StateSpawn
+
+		#region StateFallDown
+		private void StateFallDown()
+		{
+			if(IsAllBlocksStopped())
+			{
+				SetState(State.SPAWN);
+			}
+			//Mapping();
+		}
+
+		private bool IsAllBlocksStopped()
+		{
+			for(int i = 0; i < m_blockGroupList.Count; i++)
+			{
+				if(!m_blockGroupList[i].IsStopped())
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
+		#region Mapping
+		private int[][] m_blockMap;
+		private void Mapping()
+		{
+			m_blockMap = MappingAllBlock(m_blockGroupList, GameManager.MAX_ROWS + m_spawnRows, GameManager.MAX_COLUMNS);
+		}
+
+		private static int[][] MappingAllBlock(List<BlockGroup> blockGroupList, int rows, int columns)
+		{
+			int[][] map = CreateBlockMap(rows, columns);
+			for(int i = 0; i < blockGroupList.Count; i++)
+			{
+				BlockGroup blockGroup = blockGroupList[i];
+				blockGroup.Mapping(ref map);
+			}
+			return map;
+		}
+
+		private static int[][] CreateBlockMap(int rows, int columns)
+		{
+			int[][] map = new int[rows][];
+
+			for(int r = 0; r < map.Length; r++)
+			{
+				map[r] = new int[columns];
+				for(int c = 0; c < map[r].Length; c++)
+				{
+					map[r][c] = -1;
+				}
+			}
+			return map;
+		}
+		#endregion // Mapping
+
+		#region Move
+
+		#endregion // Move
+
+		#endregion // StateFallDown
+		#endregion //Update
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	}
 }

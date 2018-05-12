@@ -6,7 +6,8 @@ namespace Ingame
 {
 	public class GameManager : MonoBehaviour
 	{
-
+		// 1フレームの時間を固定
+		public const float SECOND_PER_FRAME = 0.016f;
 		public const int MAX_ROWS = 30;
 		public const int MAX_COLUMNS = 15;
 
@@ -16,10 +17,14 @@ namespace Ingame
 		// Use this for initialization
 		void Awake()
 		{
-			m_blockManager = gameObject.AddComponent<BlockManager>();
+			CreateBlockManager();
 			DebugBackground();
+		}
 
-			SetState(State.INIT);
+		private void CreateBlockManager()
+		{
+			m_blockManager = gameObject.AddComponent<BlockManager>();
+			m_blockManager.transform.parent = this.transform;
 		}
 
 		void DebugBackground()
@@ -43,47 +48,5 @@ namespace Ingame
 			}
 			bg.transform.position = new Vector3(0, 0, 10);
 		}
-
-		// Update is called once per frame
-		void Update()
-		{
-			UpdateState();
-		}
-
-		#region State
-		enum State
-		{
-			SUSPEND,
-			INIT,
-		}
-		State m_state;
-		void SetState(State state) { m_state = state; }
-		State state { get { return m_state; } }
-		#endregion // State
-
-		void UpdateState()
-		{
-			switch(state)
-			{
-				case State.SUSPEND:
-					// nothing to do
-					break;
-
-				case State.INIT:
-					StateInit();
-					break;				
-			}
-		}
-
-		#region StateInit
-		void StateInit()
-		{
-			float tb = Time.realtimeSinceStartup;
-			BlockManager.SpawnRandomBlocks();
-			SetState(State.SUSPEND);
-			float ta = Time.realtimeSinceStartup;
-			Debug.Log(ta - tb);
-		}
-		#endregion // StateInit
 	}
 }
