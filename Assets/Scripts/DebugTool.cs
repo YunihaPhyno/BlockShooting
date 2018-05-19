@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Debug : MonoBehaviour {
+public class DebugTool : MonoBehaviour {
 
 	public bool spawnFlag = false;
 	public GameObject spawnTargetObject;

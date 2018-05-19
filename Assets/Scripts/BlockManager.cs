@@ -8,10 +8,21 @@ namespace Ingame
 	{
 		private static GameObject blockPrefab;
 		private static GameObject floorPrefab;
-		private static GameObject blockGroupPrefab;
+		private static GameObject floorBlockPrefab;
 
 		private Transform m_blockParent;
 		private Transform BlockParent { get { return m_blockParent; } }
+
+		#region BlockList
+		private List<Block> m_blockList = new List<Block>();
+		public List<Block> BlockList { get { return m_blockList; } }
+		#endregion // BlockList
+
+		#region SpawnRows
+		private int m_spawnRows = 5;
+		public void SetSpawnRows(int value) { m_spawnRows = value; }
+		public int SpawnRows { get { return m_spawnRows; } }
+		#endregion //SpawnRows
 
 		#region Awake
 		private void Awake()
@@ -32,7 +43,7 @@ namespace Ingame
 		{
 			blockPrefab = CheckLoad<GameObject>("Block");
 			floorPrefab = CheckLoad<GameObject>("Floor");
-			blockGroupPrefab = CheckLoad<GameObject>("BlockGroup");
+			floorBlockPrefab = CheckLoad<GameObject>("FloorBlock");
 		}
 
 		private static T CheckLoad<T>(string path) where T : Object
@@ -58,7 +69,7 @@ namespace Ingame
 			GameObject floor = GameObject.Instantiate<GameObject>(floorPrefab);
 			for(int c = 0; c < GameManager.MAX_COLUMNS; c++)
 			{
-				GameObject block = GameObject.Instantiate<GameObject>(blockPrefab);
+				GameObject block = GameObject.Instantiate<GameObject>(floorBlockPrefab);
 				block.transform.parent = floor.transform;
 				block.transform.localPosition = new Vector3(c, -1, 0);
 			}
@@ -67,12 +78,6 @@ namespace Ingame
 		#endregion //Start
 
 		#region Update
-
-		#region BlockGroupList
-		private List<BlockGroup> m_blockGroupList = new List<BlockGroup>();
-		public List<BlockGroup> BlockGroupList { get { return m_blockGroupList; } }
-		#endregion // BlockList
-
 		// Update is called once per frame
 		private void Update()
 		{
@@ -118,11 +123,7 @@ namespace Ingame
 
 		#region SpawnRandomBlocks
 
-		#region SpawnRows
-		private int m_spawnRows = 3;
-		public void SetSpawnRows(int value) { m_spawnRows = value; }
-		public int SpawnRows { get { return m_spawnRows; } }
-		#endregion //SpawnRows
+		
 
 		#region Threshold
 		// 生成される確率(1.0f = 100%)
@@ -133,105 +134,20 @@ namespace Ingame
 
 		public void SpawnRandomBlocks()
 		{
-			Block[][] blocks = MakeRandomBlocks(SpawnRows, Threshold, BlockParent);
-			m_blockGroupList.AddRange(MakeBlockGroups(blocks, BlockParent));
+			Block[] blocks = MakeRandomBlocks(SpawnRows, GameManager.MAX_COLUMNS, Threshold, BlockParent);
+			BlockList.AddRange(blocks);
 		}
-
-		private static List<BlockGroup> MakeBlockGroups(Block[][] blocks, Transform parent)
+		
+		private static Block[] MakeRandomBlocks(int rows, int cols, float threshold, Transform parent)
 		{
-			var groupList = new List<BlockGroup>();
-
-			// 全ての点を探索する
-			for(int r = 0; r < blocks.Length; r++)
-			{
-				for(int c = 0; c < blocks[r].Length; c++)
-				{
-					// ブロックの存在チェック
-					if(blocks[r][c] == null)
-					{
-						continue;
-					}
-
-					// そのブロックがグループに所属している？
-					if(GetBlockGroup(groupList, blocks, r, c) != null)
-					{
-						continue;
-					}
-
-					// 所属が見つからなければ新たに作る
-					BlockGroup newGroup = CreateBlockGroup(parent);
-					groupList.Add(newGroup);
-
-					// 再帰的に隣接するブロックを登録する
-					AddAllNeighborBlock(newGroup, blocks, r, c, groupList);
-				}
-			}
-
-			return groupList;
-		}
-
-		private static void AddAllNeighborBlock(BlockGroup group, Block[][] blocks, int row, int col, List<BlockGroup> groupList)
-		{
-			if(row < 0 || blocks.Length <= row || col < 0 || blocks[0].Length <= col)
-			{
-				return;
-			}
-
-			if(blocks[row][col] == null)
-			{
-				return;
-			}
-
-			if(GetBlockGroup(groupList, blocks, row, col) != null)
-			{
-				return;
-			}
-
-			// 自分自身を登録
-			group.Add(blocks[row][col]);
-
-			AddAllNeighborBlock(group, blocks, row + 1, col, groupList); // 上
-			AddAllNeighborBlock(group, blocks, row, col + 1, groupList); // 右
-			AddAllNeighborBlock(group, blocks, row - 1, col, groupList); // 下
-			AddAllNeighborBlock(group, blocks, row, col - 1, groupList); // 左
-		}
-
-		private static BlockGroup CreateBlockGroup(Transform parent)
-		{
-			GameObject obj = Instantiate<GameObject>(blockGroupPrefab);
-			obj.transform.parent = parent;
-			obj.transform.localPosition = Vector3.zero;
-
-			BlockGroup group = obj.AddComponent<BlockGroup>();
-			return group;
-		}
-
-		private static BlockGroup GetBlockGroup(List<BlockGroup> groupList, Block[][] blocks, int r, int c)
-		{
-			for(int i = 0; i < groupList.Count; i++)
-			{
-				if(!groupList[i].Contains(blocks[r][c]))
-				{
-					continue;
-				}
-
-				return groupList[i];
-			}
-
-			return null;
-		}
-
-		private static Block[][] MakeRandomBlocks(int rows, float threshold, Transform parent)
-		{
-			Block[][] blocks = new Block[rows][];
+			Block[] blocks = new Block[rows * cols];
 			for(int r = 0; r < rows; r++)
 			{
-				blocks[r] = new Block[GameManager.MAX_COLUMNS];
-				for(int c = 0; c < GameManager.MAX_COLUMNS; c++)
+				for(int c = 0; c < cols; c++)
 				{
 					if(Random.Range(0.0f, 1.0f) <= threshold)
 					{
-						blocks[r][c] = SpawnBlock(new Vector3(c, GameManager.MAX_ROWS + r, 0), parent);
+						blocks[r * cols + c] = SpawnBlock(new Vector3(c, GameManager.MAX_ROWS + r, 0), parent);
 					}
 				}
 			}
@@ -244,7 +160,7 @@ namespace Ingame
 			gobj.transform.parent = parent;
 			gobj.transform.localPosition = spawnPos;
 
-			Block block = gobj.AddComponent<Block>();
+			Block block = gobj.GetComponent<Block>();
 			return block;
 		}
 		#endregion // SpawnRandomBlocks
@@ -263,17 +179,21 @@ namespace Ingame
 
 		private bool IsAllBlocksStopped()
 		{
-			for(int i = 0; i < m_blockGroupList.Count; i++)
+			return false;
+			/*
+			for(int i = 0; i < BlockList.Count; i++)
 			{
-				if(!m_blockGroupList[i].IsStopped())
+				if(!BlockList[i].IsStopped())
 				{
 					return false;
 				}
 			}
 			return true;
+			*/
 		}
 
 		#region Mapping
+		/*
 		private int[][] m_blockMap;
 		private void Mapping()
 		{
@@ -305,6 +225,7 @@ namespace Ingame
 			}
 			return map;
 		}
+		*/
 		#endregion // Mapping
 
 		#region Move

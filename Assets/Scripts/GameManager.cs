@@ -6,8 +6,12 @@ namespace Ingame
 {
 	public class GameManager : MonoBehaviour
 	{
+		public static readonly string TAG_BLOCK = "Block";
+		public static readonly string TAG_FLOOR = "Floor";
+
+		public const float SECOND_PER_FRAME = 0.02f;
+
 		// 1フレームの時間を固定
-		public const float SECOND_PER_FRAME = 0.016f;
 		public const int MAX_ROWS = 30;
 		public const int MAX_COLUMNS = 15;
 
