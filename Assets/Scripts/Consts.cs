@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Ingame
+public static class Consts
 {
-	public class BlockGroup : MonoBehaviour
-	{		
-	}
+	public const float SECONDS_PER_FRAME = 0.02f;	
 }
