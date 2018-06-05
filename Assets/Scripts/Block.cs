@@ -6,6 +6,8 @@ using UnityEngine;
 public class Block : MonoBehaviour
 {
 	private const int NUM_HIT_ARRAY_MAX = 5;
+	private const float SEARCH_NEIGHBOR_BLOCK = 0.5f;
+
 
 	private float m_speed = 6.0f;
 
@@ -24,46 +26,83 @@ public class Block : MonoBehaviour
 	}
 
 	List<Collider2D> m_colliderList = new List<Collider2D>();
+	private Vector2 m_moveVector = Vector2.down;
 
-	private Vector2 m_moveVector;
+	private bool m_isGrounded = false;
+	private bool m_isGroundedLastFrame = false;
+	public bool IsGrounded { get { return m_isGrounded; } }
+	private bool m_alreadyUpdatedGroundedUpdate = false;
+	private bool m_canMoveThisFrame = false;
+
+	enum Side
+	{
+		TOP,
+		BOTTOM,
+		LEFT,
+		RIGHT
+	}
 
 	private void Awake()
 	{
 		m_colliderList.AddRange(gameObject.GetComponentsInChildren<Collider2D>());	
 	}
 
-	// Use this for initialization
-	private void Start () {
-		
+
+	public void Initialize(float x, float y)
+	{
+		Initialize(new Vector2(x, y));
+	}
+	public void Initialize(Vector2 localPosition)
+	{
+		this.transform.localPosition = (Vector3)localPosition;
+		this.gameObject.SetActive(true);
+		ResetFlags();
 	}
 
-	// Update is called once per frame
-	private void Update () {
-		// 移動ベクトルの計算
-		CalculateMoveVector();
-		SyncMoveVectorNeighborBlock();
+	private void ResetFlags()
+	{
+		m_isGrounded = false;
+		m_isGroundedLastFrame = false;
+		m_alreadyUpdatedGroundedUpdate = false;
+	}
+
+	private void Update()
+	{
+		if(!m_isGrounded)
+		{
+			MoveUpdate();
+		}
 	}
 
 	private void LateUpdate()
 	{
-		Debug.Log("[" + Time.time + "]" + gameObject.name + m_moveVector.ToString());
-		InvokeMove(m_moveVector);
-		m_moveVector = Vector2.positiveInfinity;
+		m_isGroundedLastFrame = m_isGrounded;
+		m_isGrounded = false;
+	}
+
+	#region MoveUpdate
+	private void MoveUpdate()
+	{
+		Vector2 moveVector = CalculateMoveVector();
+
+		if(moveVector.sqrMagnitude < Vector2.kEpsilon)
+		{
+			OnGrounded();
+		}
+
+		else
+		{
+			InvokeMove(moveVector);
+		}
 	}
 
 	// 移動ベクトルの計算
-	private void CalculateMoveVector()
+	private Vector2 CalculateMoveVector()
 	{
 		// 移動を試みる距離
 		float requestMoveDistance = m_speed * Consts.SECONDS_PER_FRAME;
 
-		Vector2 result = TryMove(requestMoveDistance);
-
-		// 何処まで移動できるかを計算。結果をメンバに保存
-		if(result.sqrMagnitude < m_moveVector.sqrMagnitude)
-		{
-			m_moveVector = result;
-		}
+		return TryMove(requestMoveDistance);
 	}
 
 	// 何処まで移動できるか
@@ -86,7 +125,8 @@ public class Block : MonoBehaviour
 				continue;
 			}
 
-			if(hit.transform.tag == "Block")
+			Block block = hit.transform.GetComponent<Block>();
+			if(block != null && !block.m_isGrounded)
 			{
 				continue;
 			}
@@ -96,7 +136,6 @@ public class Block : MonoBehaviour
 
 		return Vector2.down * moveDistance;
 	}
-	
 
 	private void InvokeMove(Vector2 moveVector)
 	{
@@ -104,78 +143,93 @@ public class Block : MonoBehaviour
 		GetRigidBody().MovePosition(nextPosition);
 	}
 
-	private void TrySyncMoveVector(Vector2 moveVector)
+	private void OnGrounded()
 	{
-		if(moveVector == m_moveVector)
+		if(m_isGrounded)
 		{
 			return;
 		}
 
-		if(moveVector.sqrMagnitude < m_moveVector.sqrMagnitude)
+		m_isGrounded = true;
+		NotifyGroundedAllNeighborBlocks();
+		AlignPosition();
+	}
+
+	private void AlignPosition()
+	{
+		Vector3 pos = this.transform.localPosition;
+		pos.y = Mathf.RoundToInt(pos.y);
+		this.transform.localPosition = pos;
+	}
+
+	private void NotifyGroundedAllNeighborBlocks()
+	{
+		List<Block> neighborBlockList = GetNeighborBlockList();
+		for(int i = 0, max = neighborBlockList.Count; i < max; i++)
 		{
-			Debug.Log("[" + Time.time + "]Sync " + gameObject.name);
-			m_moveVector = moveVector;
+			Block current = neighborBlockList[i];
+			if(current.m_isGrounded)
+			{
+				continue;
+			}
+
+			if(m_isGroundedLastFrame && !current.m_isGroundedLastFrame)
+			{
+				continue;
+			}
+			current.ReceivedGroundedNotify();
 		}
-		SyncMoveVectorNeighborBlock();
 	}
 
-	enum Side
+	public void ReceivedGroundedNotify()
 	{
-		TOP,
-		BOTTOM,
-		LEFT,
-		RIGHT
+		OnGrounded();
 	}
-	private Vector2 GetObjectSideVectorFromCenter(Side side)
-	{
-		return GetObjectSideDirectionFromCenter(side) * GetObjectSideDistanceFromCenter(side); 
-	}
+	#endregion // MoveUpdate
 
-	private float GetObjectSideDistanceFromCenter(Side side)
+	#region GroundedUpdate
+	private void GroundedUpdate()
 	{
-		float value = 0;
-		switch(side)
+		if(m_alreadyUpdatedGroundedUpdate)
 		{
-			case Side.TOP:
-			case Side.BOTTOM:
-				value = transform.lossyScale.y / 2.0f;
-				break;
-
-			case Side.RIGHT:
-			case Side.LEFT:
-				value = transform.lossyScale.x / 2.0f;
-				break;
+			return;
 		}
-		return value;
-	}
+		m_alreadyUpdatedGroundedUpdate = true;
 
-	private Vector2 GetObjectSideDirectionFromCenter(Side side)
-	{
-		switch(side)
+		if(!CanMove())
 		{
-			case Side.TOP:
-				return Vector2.up;
-
-			case Side.BOTTOM:
-				return Vector2.down;
-
-			case Side.LEFT:
-				return Vector2.left;
-
-			case Side.RIGHT:
-				return Vector2.right;
+			return;
 		}
-
-		return Vector2.zero;
+		m_isGrounded = false;
 	}
 
-	private void SyncMoveVectorNeighborBlock()
+	private bool CanMove()
 	{
 		List<Block> blockList = GetNeighborBlockList();
-		blockList.ForEach(block => block.TrySyncMoveVector(m_moveVector));
+		return false;
 	}
 
-	private const float SEARCH_NEIGHBOR_BLOCK = 0.5f;
+	#endregion
+
+	private static bool CanMoveAllNeighborBlock(List<Block> neighborBlockList)
+	{
+		for(int i = 0, max = neighborBlockList.Count; i < max; i++)
+		{
+			Block current = neighborBlockList[i];
+			if(!current.IsGrounded)
+			{
+				continue;
+			}
+
+			if(!current.CanMove())
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	#region GetNeighborBlockList
 	private List<Block> GetNeighborBlockList()
 	{
 		var neighborList = new List<Block>();
@@ -235,4 +289,48 @@ public class Block : MonoBehaviour
 		return null;
 	}
 
+	private Vector2 GetObjectSideVectorFromCenter(Side side)
+	{
+		return GetObjectSideDirectionFromCenter(side) * GetObjectSideDistanceFromCenter(side);
+	}
+
+	private float GetObjectSideDistanceFromCenter(Side side)
+	{
+		float value = 0;
+		switch(side)
+		{
+			case Side.TOP:
+			case Side.BOTTOM:
+				value = transform.lossyScale.y / 2.0f;
+				break;
+
+			case Side.RIGHT:
+			case Side.LEFT:
+				value = transform.lossyScale.x / 2.0f;
+				break;
+		}
+		return value;
+	}
+
+	private Vector2 GetObjectSideDirectionFromCenter(Side side)
+	{
+		switch(side)
+		{
+			case Side.TOP:
+				return Vector2.up;
+
+			case Side.BOTTOM:
+				return Vector2.down;
+
+			case Side.LEFT:
+				return Vector2.left;
+
+			case Side.RIGHT:
+				return Vector2.right;
+		}
+
+		return Vector2.zero;
+	}
+
+	#endregion //GetNeighborBlockList
 }
