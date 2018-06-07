@@ -10,6 +10,8 @@ namespace Ingame
 		private readonly string BULLET_PREFAB_PATH = "Prefabs/Ingame/Bullet";
 		private readonly string BULLET_PARENT_OBJECT_NAME = "Bullets";
 
+		public BulletManager(Transform parent) : base(parent) { }
+
 		protected override int GetBufferSize()
 		{
 			return MAX_BULLETS;
@@ -25,6 +27,14 @@ namespace Ingame
 			return BULLET_PARENT_OBJECT_NAME;
 		}
 
-		
+		public void Spawn(Vector2 position)
+		{
+			Bullet bullet = GetObject();
+			if(bullet == null)
+			{
+				return;
+			}
+			bullet.Initialize(position);
+		}
 	}
 }

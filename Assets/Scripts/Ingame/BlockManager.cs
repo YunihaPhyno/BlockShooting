@@ -12,6 +12,8 @@ namespace Ingame
 		private readonly string BLOCK_PREFAB_PATH = "Prefabs/Ingame/Block";
 		private readonly string BLOCK_PARENT_OBJECT_NAME = "Blocks";
 
+		public BlockManager(Transform parent) : base(parent) { }
+
 		protected override int GetBufferSize()
 		{
 			return MAX_ROWS * MAX_COLUMNS;
@@ -25,19 +27,6 @@ namespace Ingame
 		protected override string GetParentObjectName()
 		{
 			return BLOCK_PARENT_OBJECT_NAME;
-		}
-
-		float currentTime = 0;
-
-		// Update is called once per frame
-		void Update()
-		{
-			currentTime += Consts.SECONDS_PER_FRAME;
-			if(currentTime >= 3)
-			{
-				MakeRandomBlocks(3, MAX_COLUMNS);
-				currentTime = 0;
-			}
 		}
 
 		public void MakeRandomBlocks(int rows, int cols)
@@ -57,6 +46,11 @@ namespace Ingame
 		public void Spawn(Vector2 localPosision)
 		{
 			Block block = GetObject();
+			if(block == null)
+			{
+				return;
+			}
+
 			block.Initialize(localPosision);
 		}
 
@@ -65,6 +59,10 @@ namespace Ingame
 			Block[] blockArray = GetObjects(localPositions.Length);
 			for(int i = 0; i < blockArray.Length && i < localPositions.Length; i++)
 			{
+				if(blockArray[i] == null)
+				{
+					continue;
+				}
 				blockArray[i].Initialize(localPositions[i]);
 			}
 		}

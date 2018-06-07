@@ -10,8 +10,7 @@ namespace Ingame
 		private const int NUM_HIT_ARRAY_MAX = 5;
 		private const float SEARCH_NEIGHBOR_BLOCK = 0.5f;
 
-
-		private float m_speed = 6.0f;
+		private float m_speed = 3.0f;
 
 		private Rigidbody2D m_rigidBody;
 
@@ -139,6 +138,13 @@ namespace Ingame
 				// バレットもスキップ
 				Bullet bullet;
 				if(Utils.TryGetComponent<Bullet>(hit.transform.gameObject, out bullet))
+				{
+					continue;
+				}
+
+				// プレイヤーもスキップ
+				Player player;
+				if(Utils.TryGetComponent<Player>(hit.transform.gameObject, out player))
 				{
 					continue;
 				}

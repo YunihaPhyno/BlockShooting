@@ -4,15 +4,14 @@ using UnityEngine;
 
 namespace Ingame
 {
-	public abstract class ObjectManagerBase<T> : MonoBehaviour where T : MonoBehaviour
+	public abstract class ObjectManagerBase<T> where T : MonoBehaviour
 	{
 		private Transform m_objectParent;
 		private RingBuffer<T> m_objectRingBuffer;
 
-		private void Awake()
+		public ObjectManagerBase(Transform parent = null)
 		{
-			m_objectParent = CreateParentObject(GetParentObjectName(), this.transform);
-
+			m_objectParent = CreateParentObject(GetParentObjectName(), parent);
 			m_objectRingBuffer = new RingBuffer<T>(GetBufferSize(), Resources.Load<GameObject>(GetObjectPrefabPath()), m_objectParent);
 		}
 

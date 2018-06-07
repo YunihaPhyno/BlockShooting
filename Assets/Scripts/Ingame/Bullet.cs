@@ -22,9 +22,9 @@ namespace Ingame
 			return m_rigidBody;
 		}
 
-		public void Initialize(Vector2 localPosition)
+		public void Initialize(Vector2 position)
 		{
-			this.transform.localPosition = (Vector3)localPosition;
+			this.transform.position = (Vector3)position;
 			this.gameObject.SetActive(true);
 		}
 
@@ -55,8 +55,9 @@ namespace Ingame
 			if(Utils.TryGetComponent<Block>(other.gameObject, out block))
 			{
 				block.OnTriggerBullet();
-			}
-			OnTriggerAction();
+				OnTriggerAction();
+				return;
+			}		
 		}
 
 		private void OnTriggerAction()
