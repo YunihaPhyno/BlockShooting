@@ -8,6 +8,7 @@ namespace Ingame
 	{
 		private Transform m_objectParent;
 		private RingBuffer<T> m_objectRingBuffer;
+		protected T[] GetBuffer() { return m_objectRingBuffer.GetAllBuffer(); }
 
 		public ObjectManagerBase(Transform parent = null)
 		{

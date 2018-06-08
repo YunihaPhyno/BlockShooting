@@ -2,8 +2,8 @@
 
 public class RingBuffer<T> where T : Component
 {
-	T[] m_buffer;
-	int tail = 0;
+	private T[] m_buffer;
+	private int tail = 0;
 
 	public RingBuffer(int num, GameObject prefab, Transform parent = null)
 	{

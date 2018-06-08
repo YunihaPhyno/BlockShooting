@@ -26,4 +26,35 @@ public static class Utils
 
 		return false;
 	}
+
+	public static T[][] CreateMatrix<T>(int rows, int cols)
+	{
+		T[][] mat = new T[rows][];
+		for(int r = 0; r < mat.Length; r++)
+		{
+			mat[r] = new T[cols];
+		}
+		return mat;
+	}
+
+	public static void SafeDestroy(ref Object obj)
+	{
+		if(obj == null)
+		{
+			return;
+		}
+
+		GameObject.Destroy(obj);
+		obj = null;
+	}
+
+	public static void SafeDestroy(ref Transform transform)
+	{
+		if(transform == null)
+		{
+			return;
+		}
+		GameObject.Destroy(transform.gameObject);
+		transform = null;
+	}
 }

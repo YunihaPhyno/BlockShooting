@@ -6,7 +6,7 @@ namespace Ingame
 {
 	public class BlockManager : ObjectManagerBase<Block>
 	{
-		public const int MAX_ROWS = 20;
+		public const int MAX_ROWS = 30;
 		public const int MAX_COLUMNS = 15;
 		public const int SPAWN_HEIGHT = 30;
 		private readonly string BLOCK_PREFAB_PATH = "Prefabs/Ingame/Block";
@@ -66,6 +66,42 @@ namespace Ingame
 				blockArray[i].Initialize(localPositions[i]);
 			}
 		}
+
+		public Block[][] GetGroundedMap()
+		{
+			Block[][] map;
+			Mapping(out map, GetBuffer());
+			return map;
+		}
+
+		private static void Mapping(out Block[][] map, Block[] buffer)
+		{
+			map = Utils.CreateMatrix<Block>(MAX_ROWS, MAX_COLUMNS);
+			for(int i = 0, length = buffer.Length; i < length; i++)
+			{
+				Block block = buffer[i];
+				if(!block.gameObject.activeSelf)
+				{
+					continue;
+				}
+
+				if(!block.IsGrounded)
+				{
+					continue;
+				}
+
+				int x = (int)block.transform.localPosition.x;
+				int y = (int)block.transform.localPosition.y;
+				if(y >= map.Length || x >= map[y].Length)
+				{
+					continue;
+				}
+
+				map[y][x] = block;
+			}
+		}
+
+		
 	}
 }
 

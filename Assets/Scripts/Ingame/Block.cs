@@ -19,7 +19,7 @@ namespace Ingame
 
 		private bool m_isGrounded = false;
 		private bool m_isGroundedLastFrame = false;
-		public bool IsGrounded { get { return m_isGrounded; } }
+		public bool IsGrounded { get { return m_isGrounded || m_isGroundedLastFrame; } }
 		private bool m_alreadyUpdatedGroundedUpdate = false;
 		private bool m_canMoveThisFrame = false;
 
@@ -356,6 +356,11 @@ namespace Ingame
 		#endregion //GetNeighborBlockList
 
 		public void OnTriggerBullet()
+		{
+			Vanish();
+		}
+
+		public void Vanish()
 		{
 			this.gameObject.SetActive(false);
 		}
